@@ -2,14 +2,14 @@
   "version": 2,
   "name": "autovi-system",
   "functions": {
-    "backend/server.js": {
+    "api/index.js": {
       "maxDuration": 30
     }
   },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/backend/server.js"
+      "destination": "/api/index.js"
     }
   ],
   "env": {
