@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚗 AutoVi - Vigilância Automática de Placas</title>
+    <meta name="description" content="Sistema de vigilância automática de placas em tempo real. Detecta veículos procurados automaticamente enquanto você dirige.">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 60px 20px;
+            color: white;
+        }
+        
+        .logo {
+            font-size: 4em;
+            margin-bottom: 20px;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .title {
+            font-size: 3.5em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.5em;
+            opacity: 0.9;
+            margin-bottom: 40px;
+        }
+        
+        .description {
+            font-size: 1.2em;
+            max-width: 800px;
+            margin: 0 auto 50px;
+            opacity: 0.8;
+            line-height: 1.6;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin: 50px 0;
+        }
+        
+        .feature-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .feature-icon {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+        
+        .feature-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        
+        .feature-desc {
+            color: #7f8c8d;
+            line-height: 1.6;
+        }
+        
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin: 50px 0;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 15px;
+            padding: 20px 40px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.9);
+            color: #2c3e50;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.2);
+        }
+        
+        .demo-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 50px;
+            margin: 30px 0;
+            text-align: center;
+        }
+        
+        .demo-title {
+            font-size: 2.5em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        
+        .demo-plates {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin: 40px 0;
+        }
+        
+        .demo-plate {
+            background: white;
+            border: 3px solid #333;
+            border-radius: 8px;
+            padding: 15px 30px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 1.8em;
+            position: relative;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .demo-plate.alert {
+            border-color: #e74c3c;
+            animation: pulse-demo 2s infinite;
+        }
+        
+        @keyframes pulse-demo {
+            0%, 100% { box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+            50% { box-shadow: 0 5px 25px rgba(231,76,60,0.4), 0 0 20px rgba(231,76,60,0.3); }
+        }
+        
+        .demo-status {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #e74c3c;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+        
+        .footer {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            padding: 40px 20px;
+            margin-top: auto;
+        }
+        
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2.5em;
+            }
+            
+            .subtitle {
+                font-size: 1.2em;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .demo-plates {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🚗</div>
+            <h1 class="title">AutoVi</h1>
+            <p class="subtitle">Vigilância Automática de Placas</p>
+            <p class="description">
+                Sistema inteligente que detecta automaticamente placas de veículos procurados 
+                enquanto você dirige. Transforme seu celular em um sistema de vigilância profissional.
+            </p>
+        </div>
+        
+        <div class="features">
+            <div class="feature-card">
+                <div class="feature-icon">📱</div>
+                <h3 class="feature-title">Vigilância Móvel</h3>
+                <p class="feature-desc">
+                    Use seu celular como câmera de vigilância. 
+                    Cole no parabrisas e dirija normalmente.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">🔍</div>
+                <h3 class="feature-title">Detecção Automática</h3>
+                <p class="feature-desc">
+                    OCR inteligente reconhece placas em tempo real 
+                    sem intervenção manual.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">🚨</div>
+                <h3 class="feature-title">Alertas Instantâneos</h3>
+                <p class="feature-desc">
+                    Alertas visuais, sonoros e por vibração 
+                    quando detectar veículos procurados.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">📍</div>
+                <h3 class="feature-title">GPS Integrado</h3>
+                <p class="feature-desc">
+                    Localização exata de cada detecção 
+                    para facilitar a ação das autoridades.
+                </p>
+            </div>
+        </div>
+        
+        <div class="action-buttons">
+            <a href="mobile-surveillance.html" class="btn btn-primary">
+                📱 Iniciar Vigilância Móvel
+            </a>
+            <a href="simple-frontend.html" class="btn btn-secondary">
+                🖥️ Dashboard Completo
+            </a>
+        </div>
+        
+        <div class="demo-section">
+            <h2 class="demo-title">🎯 Demonstração</h2>
+            <p style="font-size: 1.2em; color: #7f8c8d; margin-bottom: 30px;">
+                Placas atualmente monitoradas para teste:
+            </p>
+            
+            <div class="demo-plates">
+                <div class="demo-plate alert">
+                    ABC1234
+                    <div class="demo-status">🚨</div>
+                </div>
+                <div class="demo-plate">
+                    XYZ9876
+                    <div class="demo-status" style="background: #f39c12;">⚠️</div>
+                </div>
+                <div class="demo-plate">
+                    VIP0001
+                    <div class="demo-status" style="background: #27ae60;">⭐</div>
+                </div>
+            </div>
+            
+            <p style="color: #e74c3c; font-weight: bold;">
+                🚨 Teste com qualquer uma dessas placas para ver o sistema em ação!
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; 2025 AutoVi - Vigilância Automática de Placas</p>
+            <p>Sistema desenvolvido para aumentar a segurança nas ruas</p>
+        </div>
+    </div>
+    
+    <script>
+        // Verificar se está rodando em produção ou desenvolvimento
+        const isProduction = window.location.hostname !== 'localhost';
+        
+        if (isProduction) {
+            // Em produção, atualizar links para usar a API da Vercel
+            console.log('🚀 Rodando em produção');
+        } else {
+            console.log('🛠️ Rodando em desenvolvimento');
+        }
+        
+        // Adicionar animações suaves
+        window.addEventListener('load', () => {
+            document.body.style.animation = 'fadeIn 1s ease-out';
+        });
+        
+        // CSS para animação
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(30px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

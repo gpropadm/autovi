@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚗 Sistema de Reconhecimento de Placas - TESTE</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.2em;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .status {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        
+        .status-item {
+            text-align: center;
+            flex: 1;
+            padding: 20px;
+            margin: 0 10px;
+            border-radius: 15px;
+            border: 2px solid #e0e0e0;
+        }
+        
+        .status-item.active {
+            background: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+            transform: scale(1.05);
+        }
+        
+        .status-item h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.1em;
+        }
+        
+        .status-item .emoji {
+            font-size: 2em;
+            display: block;
+            margin-bottom: 10px;
+        }
+        
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin: 30px 0;
+            background: #fafafa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-area:hover {
+            border-color: #4CAF50;
+            background: #f0f8ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #4CAF50;
+            background: #e8f5e8;
+            transform: scale(1.02);
+        }
+        
+        .upload-area input {
+            display: none;
+        }
+        
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+        
+        .plates-demo {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px 0;
+        }
+        
+        .plates-demo h3 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .plate-examples {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .plate {
+            background: white;
+            border: 3px solid #333;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 1.5em;
+            text-align: center;
+            min-width: 120px;
+            position: relative;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .plate.stolen {
+            animation: pulse-red 2s infinite;
+            border-color: #dc3545;
+        }
+        
+        .plate.suspicious {
+            border-color: #ffc107;
+        }
+        
+        .plate.vip {
+            border-color: #28a745;
+        }
+        
+        .plate-status {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #dc3545;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        
+        .plate.suspicious .plate-status {
+            background: #ffc107;
+        }
+        
+        .plate.vip .plate-status {
+            background: #28a745;
+        }
+        
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+            50% { box-shadow: 0 4px 20px rgba(220,53,69,0.5), 0 0 20px rgba(220,53,69,0.3); }
+        }
+        
+        .test-btn {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        .test-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .api-test {
+            background: #1a1a1a;
+            color: #00ff00;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+        
+        .success {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        
+        .alert {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 5px solid #f39c12;
+        }
+        
+        .alert.danger {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            border-left-color: #dc3545;
+        }
+        
+        .instructions {
+            background: #e3f2fd;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+            border-left: 5px solid #2196f3;
+        }
+        
+        .instructions h4 {
+            color: #1976d2;
+            margin-top: 0;
+        }
+        
+        .footer {
+            background: #333;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚗 Sistema LPR</h1>
+            <p>License Plate Recognition - Detecção de Veículos</p>
+        </div>
+        
+        <div class="content">
+            <div class="status">
+                <div class="status-item active">
+                    <span class="emoji">✅</span>
+                    <h3>Backend</h3>
+                    <p>Online</p>
+                </div>
+                <div class="status-item active">
+                    <span class="emoji">🔍</span>
+                    <h3>OCR</h3>
+                    <p>Ativo</p>
+                </div>
+                <div class="status-item active">
+                    <span class="emoji">📊</span>
+                    <h3>Banco</h3>
+                    <p>SQLite</p>
+                </div>
+                <div class="status-item active">
+                    <span class="emoji">🚨</span>
+                    <h3>Alertas</h3>
+                    <p>Ativos</p>
+                </div>
+            </div>
+            
+            <div class="alert danger">
+                <h4>🚨 Sistema de Detecção de Veículos Roubados ATIVO!</h4>
+                <p>O sistema está monitorando as seguintes placas de veículos procurados:</p>
+            </div>
+            
+            <div class="plates-demo">
+                <h3>🎯 Placas Monitoradas (Teste)</h3>
+                <div class="plate-examples">
+                    <div class="plate stolen">
+                        ABC1234
+                        <div class="plate-status">🚨</div>
+                    </div>
+                    <div class="plate suspicious">
+                        XYZ9876
+                        <div class="plate-status">⚠️</div>
+                    </div>
+                    <div class="plate vip">
+                        VIP0001
+                        <div class="plate-status">⭐</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="instructions">
+                <h4>📋 Como testar o sistema:</h4>
+                <ol>
+                    <li><strong>Via API direta:</strong> Use ferramentas como Postman ou curl</li>
+                    <li><strong>Upload de imagem:</strong> POST para <code>http://localhost:3001/api/recognize</code></li>
+                    <li><strong>Consultar placas:</strong> GET para <code>http://localhost:3001/api/monitored-plates</code></li>
+                    <li><strong>Dashboard stats:</strong> GET para <code>http://localhost:3001/api/dashboard/stats</code></li>
+                </ol>
+            </div>
+            
+            <button class="test-btn" onclick="testAPI()">🧪 Testar API</button>
+            
+            <div id="api-result" class="api-test" style="display: none;">
+                <div>Testando conexão com API...</div>
+            </div>
+            
+            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                <div class="upload-icon">📸</div>
+                <h3>Faça upload de uma imagem de placa</h3>
+                <p>Clique aqui ou arraste uma imagem</p>
+                <input type="file" id="fileInput" accept="image/*" onchange="uploadImage()">
+            </div>
+            
+            <div id="upload-result" style="display: none; margin-top: 20px;"></div>
+        </div>
+        
+        <div class="footer">
+            <p>🚗 Sistema de Reconhecimento de Placas v1.0</p>
+            <p>Backend: <span class="success">http://localhost:3001</span> | Frontend: em desenvolvimento</p>
+        </div>
+    </div>
+    
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div>🔄 Testando API...</div>';
+            
+            try {
+                // Testar dashboard stats
+                const response = await fetch('http://localhost:3001/api/dashboard/stats');
+                const stats = await response.json();
+                
+                // Testar placas monitoradas
+                const platesResponse = await fetch('http://localhost:3001/api/monitored-plates');
+                const plates = await platesResponse.json();
+                
+                resultDiv.innerHTML = `
+                    <div class="success">✅ API Backend funcionando!</div>
+                    <div>📊 Estatísticas do Dashboard:</div>
+                    <div>• Detecções hoje: ${stats.todayDetections}</div>
+                    <div>• Alertas hoje: ${stats.todayAlerts}</div>
+                    <div>• Placas monitoradas: ${stats.monitoredPlates}</div>
+                    <div style="margin-top: 10px;">🚨 Placas cadastradas:</div>
+                    ${plates.map(p => `<div>• ${p.plate_number} - ${p.status.toUpperCase()} (${p.description})</div>`).join('')}
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div style="color: #ff6b6b;">❌ Erro: ${error.message}</div>`;
+            }
+        }
+        
+        async function uploadImage() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            const resultDiv = document.getElementById('upload-result');
+            
+            if (!file) return;
+            
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Processando imagem...</div>';
+            
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('cameraId', '1');
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/recognize', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const alertClass = result.alert ? 'alert danger' : 'alert';
+                    const alertIcon = result.alert ? '🚨' : '✅';
+                    const status = result.alert ? result.monitoredPlate.status.toUpperCase() : 'NORMAL';
+                    
+                    resultDiv.innerHTML = `
+                        <div class="${alertClass}">
+                            <h4>${alertIcon} Placa Detectada: ${result.plate}</h4>
+                            <p><strong>Confiança:</strong> ${result.confidence.toFixed(1)}%</p>
+                            <p><strong>Status:</strong> ${status}</p>
+                            ${result.alert ? `
+                                <p><strong>Descrição:</strong> ${result.monitoredPlate.description}</p>
+                                <p><strong>Proprietário:</strong> ${result.monitoredPlate.owner_name || 'Não informado'}</p>
+                                <p><strong>Veículo:</strong> ${result.monitoredPlate.vehicle_model || 'Não informado'}</p>
+                            ` : ''}
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="alert">
+                            <h4>❌ ${result.error}</h4>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="alert danger">
+                        <h4>❌ Erro na conexão: ${error.message}</h4>
+                    </div>
+                `;
+            }
+        }
+        
+        // Auto-teste ao carregar
+        window.onload = function() {
+            setTimeout(testAPI, 1000);
+        };
+    </script>
+</body>
+</html>

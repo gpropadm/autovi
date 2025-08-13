@@ -1,0 +1,25 @@
+{
+  "name": "autovi-system",
+  "version": "1.0.0",
+  "description": "🚗 AutoVi - Sistema de Vigilância de Placas em Tempo Real",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js",
+    "build": "cd frontend && npm run build",
+    "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install",
+    "vercel-build": "cd backend && npm install"
+  },
+  "keywords": [
+    "plate-recognition",
+    "ocr",
+    "surveillance", 
+    "autovi",
+    "license-plate"
+  ],
+  "author": "AutoVi Team",
+  "license": "MIT",
+  "engines": {
+    "node": "18.x"
+  }
+}

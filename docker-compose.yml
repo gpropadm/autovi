@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  database:
+    image: postgres:13
+    container_name: lpr_database
+    environment:
+      POSTGRES_DB: license_plate_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - lpr_network
+    restart: unless-stopped
+
+  # Backend API
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lpr_backend
+    environment:
+      NODE_ENV: production
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_NAME: license_plate_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres123
+      JWT_SECRET: sua_chave_jwt_super_secreta_aqui_123
+      EMAIL_HOST: smtp.gmail.com
+      EMAIL_PORT: 587
+      EMAIL_USER: seu_email@gmail.com
+      EMAIL_PASS: sua_senha_do_app
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - backend_logs:/app/logs
+    depends_on:
+      - database
+    networks:
+      - lpr_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend React App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: lpr_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - lpr_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx Reverse Proxy (Opcional)
+  nginx:
+    image: nginx:alpine
+    container_name: lpr_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - lpr_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  backend_logs:
+    driver: local
+
+networks:
+  lpr_network:
+    driver: bridge

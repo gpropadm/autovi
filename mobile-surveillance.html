@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚗 AutoVi Mobile - Vigilância em Tempo Real</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #000;
+            color: white;
+            overflow: hidden;
+            user-select: none;
+        }
+        
+        .app-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .camera-container {
+            position: relative;
+            flex: 1;
+            background: #000;
+        }
+        
+        #videoElement {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .detection-box {
+            position: absolute;
+            border: 3px solid #00ff00;
+            border-radius: 5px;
+            background: rgba(0, 255, 0, 0.1);
+            animation: pulse-green 1s infinite;
+        }
+        
+        .detection-box.alert {
+            border-color: #ff0000;
+            background: rgba(255, 0, 0, 0.2);
+            animation: pulse-red 0.5s infinite;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+        }
+        
+        @keyframes pulse-green {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 0.4; }
+        }
+        
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        .plate-label {
+            position: absolute;
+            bottom: -30px;
+            left: 0;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+        
+        .alert-label {
+            background: rgba(255, 0, 0, 0.9);
+            animation: blink 0.5s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            z-index: 20;
+        }
+        
+        .status-panel {
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .status-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-dot.active {
+            background: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+        }
+        
+        .status-dot.inactive {
+            background: #666;
+        }
+        
+        .alert-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.95);
+            color: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            min-width: 300px;
+            z-index: 30;
+            display: none;
+            animation: alert-popup 0.3s ease-out;
+        }
+        
+        @keyframes alert-popup {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+        
+        .alert-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .alert-plate {
+            font-family: 'Courier New', monospace;
+            font-size: 32px;
+            font-weight: bold;
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+        
+        .alert-description {
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .bottom-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            z-index: 20;
+        }
+        
+        .control-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        
+        .control-btn.active {
+            background: rgba(0, 255, 0, 0.3);
+            border-color: #00ff00;
+        }
+        
+        .control-btn.recording {
+            background: rgba(255, 0, 0, 0.3);
+            border-color: #ff0000;
+            animation: pulse-recording 1s infinite;
+        }
+        
+        @keyframes pulse-recording {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .detection-log {
+            position: absolute;
+            right: 20px;
+            top: 120px;
+            width: 250px;
+            max-height: 300px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            z-index: 20;
+        }
+        
+        .log-item {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 12px;
+        }
+        
+        .log-item:last-child {
+            border-bottom: none;
+        }
+        
+        .log-plate {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+        
+        .log-time {
+            color: #ccc;
+            font-size: 10px;
+        }
+        
+        .log-item.alert {
+            background: rgba(255, 0, 0, 0.2);
+            border-radius: 5px;
+            padding: 8px;
+            margin: 2px 0;
+        }
+        
+        .gps-info {
+            position: absolute;
+            bottom: 80px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .speed-info {
+            color: #00ff00;
+            font-weight: bold;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .detection-log {
+                width: 200px;
+                max-height: 200px;
+            }
+            
+            .alert-panel {
+                min-width: 250px;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="camera-container">
+            <video id="videoElement" autoplay muted playsinline></video>
+            <canvas id="captureCanvas" style="display: none;"></canvas>
+            
+            <!-- Overlay para detecções -->
+            <div class="overlay" id="detectionsOverlay"></div>
+            
+            <!-- Controles superiores -->
+            <div class="controls">
+                <div class="status-panel">
+                    <div class="status-item">
+                        <div class="status-dot" id="cameraStatus"></div>
+                        <span>Câmera</span>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-dot" id="gpsStatus"></div>
+                        <span>GPS</span>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-dot" id="ocrStatus"></div>
+                        <span>OCR</span>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-dot" id="serverStatus"></div>
+                        <span>Servidor</span>
+                    </div>
+                </div>
+                
+                <div class="detection-log" id="detectionLog">
+                    <div style="text-align: center; margin-bottom: 10px;">
+                        <strong>📋 Log de Detecções</strong>
+                    </div>
+                    <div class="log-item">
+                        <div style="text-align: center; color: #666;">
+                            Aguardando detecções...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Controles inferiores -->
+            <div class="bottom-controls">
+                <button class="control-btn" id="startBtn" onclick="startSurveillance()">
+                    ▶️ Iniciar Vigilância
+                </button>
+                <button class="control-btn" id="pauseBtn" onclick="pauseSurveillance()" style="display: none;">
+                    ⏸️ Pausar
+                </button>
+                <button class="control-btn" onclick="toggleSettings()">
+                    ⚙️ Configurações
+                </button>
+            </div>
+            
+            <!-- Info GPS -->
+            <div class="gps-info" id="gpsInfo">
+                <div>📍 <span id="locationText">Obtendo localização...</span></div>
+                <div class="speed-info">🚗 <span id="speedText">0 km/h</span></div>
+            </div>
+        </div>
+        
+        <!-- Painel de Alerta -->
+        <div class="alert-panel" id="alertPanel">
+            <div class="alert-title">🚨 VEÍCULO PROCURADO!</div>
+            <div class="alert-plate" id="alertPlate">ABC1234</div>
+            <div class="alert-description" id="alertDescription">
+                Veículo reportado como roubado
+            </div>
+            <button class="control-btn" onclick="closeAlert()" style="margin-top: 10px;">
+                Fechar
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:3001/api';
+        
+        let isRunning = false;
+        let captureInterval = null;
+        let detectionCount = 0;
+        let currentPosition = null;
+        let watchId = null;
+        
+        // Elementos DOM
+        const video = document.getElementById('videoElement');
+        const canvas = document.getElementById('captureCanvas');
+        const ctx = canvas.getContext('2d');
+        const overlay = document.getElementById('detectionsOverlay');
+        const logContainer = document.getElementById('detectionLog');
+        
+        // Status indicators
+        const cameraStatus = document.getElementById('cameraStatus');
+        const gpsStatus = document.getElementById('gpsStatus');
+        const ocrStatus = document.getElementById('ocrStatus');
+        const serverStatus = document.getElementById('serverStatus');
+        
+        // Inicializar câmera
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: 'environment', // Câmera traseira
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+                
+                video.srcObject = stream;
+                cameraStatus.className = 'status-dot active';
+                
+                // Configurar canvas com mesmo tamanho do vídeo
+                video.addEventListener('loadedmetadata', () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                });
+                
+                console.log('📹 Câmera inicializada');
+                
+            } catch (error) {
+                console.error('❌ Erro ao acessar câmera:', error);
+                cameraStatus.className = 'status-dot inactive';
+                alert('Não foi possível acessar a câmera. Verifique as permissões.');
+            }
+        }
+        
+        // Inicializar GPS
+        function initGPS() {
+            if ('geolocation' in navigator) {
+                watchId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        currentPosition = position;
+                        gpsStatus.className = 'status-dot active';
+                        
+                        const lat = position.coords.latitude.toFixed(6);
+                        const lon = position.coords.longitude.toFixed(6);
+                        const speed = (position.coords.speed || 0) * 3.6; // m/s para km/h
+                        
+                        document.getElementById('locationText').textContent = `${lat}, ${lon}`;
+                        document.getElementById('speedText').textContent = `${speed.toFixed(0)} km/h`;
+                    },
+                    (error) => {
+                        console.error('❌ Erro GPS:', error);
+                        gpsStatus.className = 'status-dot inactive';
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 1000
+                    }
+                );
+            } else {
+                gpsStatus.className = 'status-dot inactive';
+            }
+        }
+        
+        // Testar conexão com servidor
+        async function checkServer() {
+            try {
+                const response = await fetch(`${API_BASE}/dashboard/stats`);
+                if (response.ok) {
+                    serverStatus.className = 'status-dot active';
+                    ocrStatus.className = 'status-dot active';
+                } else {
+                    throw new Error('Servidor não responde');
+                }
+            } catch (error) {
+                console.error('❌ Servidor offline:', error);
+                serverStatus.className = 'status-dot inactive';
+                ocrStatus.className = 'status-dot inactive';
+            }
+        }
+        
+        // Capturar frame do vídeo
+        function captureFrame() {
+            if (!video.videoWidth || !video.videoHeight) return null;
+            
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL('image/jpeg', 0.8);
+        }
+        
+        // Processar frame para detecção
+        async function processFrame() {
+            const frameData = captureFrame();
+            if (!frameData) return;
+            
+            try {
+                // Converter base64 para blob
+                const response = await fetch(frameData);
+                const blob = await response.blob();
+                
+                // Enviar para API
+                const formData = new FormData();
+                formData.append('image', blob, 'frame.jpg');
+                formData.append('cameraId', '1');
+                
+                if (currentPosition) {
+                    formData.append('latitude', currentPosition.coords.latitude);
+                    formData.append('longitude', currentPosition.coords.longitude);
+                }
+                
+                const apiResponse = await fetch(`${API_BASE}/recognize`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await apiResponse.json();
+                
+                if (result.success && result.plate) {
+                    handleDetection(result);
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro no processamento:', error);
+            }
+        }
+        
+        // Processar detecção
+        function handleDetection(result) {
+            detectionCount++;
+            
+            // Adicionar ao log
+            addToLog(result);
+            
+            // Mostrar detecção na tela (simulação)
+            showDetectionBox(result);
+            
+            // Se for alerta, mostrar painel
+            if (result.alert) {
+                showAlert(result);
+                
+                // Som de alerta
+                playAlertSound();
+                
+                // Vibrar (se suportado)
+                if ('vibrate' in navigator) {
+                    navigator.vibrate([200, 100, 200, 100, 200]);
+                }
+            }
+        }
+        
+        // Adicionar detecção ao log
+        function addToLog(result) {
+            const logItem = document.createElement('div');
+            logItem.className = `log-item ${result.alert ? 'alert' : ''}`;
+            
+            const time = new Date().toLocaleTimeString('pt-BR');
+            const status = result.alert ? result.monitoredPlate.status.toUpperCase() : 'NORMAL';
+            
+            logItem.innerHTML = `
+                <div class="log-plate">${result.plate}</div>
+                <div class="log-time">${time} - ${status}</div>
+                ${result.alert ? `<div style="font-size: 10px; color: #ffcccb;">${result.monitoredPlate.description}</div>` : ''}
+            `;
+            
+            // Inserir no topo
+            const firstChild = logContainer.children[1]; // Após o título
+            logContainer.insertBefore(logItem, firstChild);
+            
+            // Manter apenas últimas 10 detecções
+            if (logContainer.children.length > 11) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+        
+        // Mostrar caixa de detecção (simulação)
+        function showDetectionBox(result) {
+            const box = document.createElement('div');
+            box.className = `detection-box ${result.alert ? 'alert' : ''}`;
+            
+            // Posição aleatória (em um sistema real, seria calculada)
+            const x = Math.random() * (window.innerWidth - 150);
+            const y = Math.random() * (window.innerHeight - 200) + 100;
+            
+            box.style.left = `${x}px`;
+            box.style.top = `${y}px`;
+            box.style.width = '120px';
+            box.style.height = '30px';
+            
+            // Label da placa
+            const label = document.createElement('div');
+            label.className = `plate-label ${result.alert ? 'alert-label' : ''}`;
+            label.textContent = result.plate;
+            box.appendChild(label);
+            
+            overlay.appendChild(box);
+            
+            // Remover após 3 segundos
+            setTimeout(() => {
+                if (box.parentNode) {
+                    box.parentNode.removeChild(box);
+                }
+            }, 3000);
+        }
+        
+        // Mostrar alerta
+        function showAlert(result) {
+            const panel = document.getElementById('alertPanel');
+            const plateEl = document.getElementById('alertPlate');
+            const descEl = document.getElementById('alertDescription');
+            
+            plateEl.textContent = result.plate;
+            descEl.textContent = result.monitoredPlate.description;
+            
+            panel.style.display = 'block';
+            
+            // Fechar automaticamente após 10 segundos
+            setTimeout(() => {
+                closeAlert();
+            }, 10000);
+        }
+        
+        // Fechar alerta
+        function closeAlert() {
+            document.getElementById('alertPanel').style.display = 'none';
+        }
+        
+        // Som de alerta
+        function playAlertSound() {
+            // Criar som usando Web Audio API
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1);
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } catch (e) {
+                console.log('Som não disponível');
+            }
+        }
+        
+        // Iniciar vigilância
+        function startSurveillance() {
+            if (isRunning) return;
+            
+            isRunning = true;
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('pauseBtn').style.display = 'inline-block';
+            document.getElementById('pauseBtn').className = 'control-btn recording';
+            
+            // Processar frames a cada 2 segundos (ajustável)
+            captureInterval = setInterval(processFrame, 2000);
+            
+            console.log('🚀 Vigilância iniciada');
+        }
+        
+        // Pausar vigilância
+        function pauseSurveillance() {
+            if (!isRunning) return;
+            
+            isRunning = false;
+            document.getElementById('startBtn').style.display = 'inline-block';
+            document.getElementById('pauseBtn').style.display = 'none';
+            
+            if (captureInterval) {
+                clearInterval(captureInterval);
+                captureInterval = null;
+            }
+            
+            console.log('⏸️ Vigilância pausada');
+        }
+        
+        // Configurações (placeholder)
+        function toggleSettings() {
+            alert('Configurações em desenvolvimento');
+        }
+        
+        // Inicializar aplicação
+        window.addEventListener('load', async () => {
+            console.log('🚗 Iniciando app de vigilância...');
+            
+            await initCamera();
+            initGPS();
+            await checkServer();
+            
+            console.log('✅ App inicializado');
+            
+            // Testar servidor a cada 30 segundos
+            setInterval(checkServer, 30000);
+        });
+        
+        // Prevenir sleep em dispositivos móveis
+        let wakeLock = null;
+        if ('wakeLock' in navigator) {
+            navigator.wakeLock.request('screen').then(lock => {
+                wakeLock = lock;
+                console.log('🔋 Wake lock ativado');
+            }).catch(err => {
+                console.log('Wake lock falhou:', err);
+            });
+        }
+        
+        // Cleanup ao sair
+        window.addEventListener('beforeunload', () => {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+            }
+            if (wakeLock) {
+                wakeLock.release();
+            }
+        });
+    </script>
+</body>
+</html>
