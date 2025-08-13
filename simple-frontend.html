@@ -540,6 +540,8 @@
                 return;
             }
             
+            console.log('📤 Enviando dados:', plateData);
+            
             try {
                 const response = await fetch(`${API_BASE}/monitored-plates`, {
                     method: 'POST',
@@ -558,8 +560,11 @@
                     document.getElementById('new-owner').value = '';
                     document.getElementById('new-model').value = '';
                     document.getElementById('new-color').value = '';
+                    alert('✅ Placa cadastrada com sucesso!');
                 } else {
-                    alert('Erro ao adicionar placa');
+                    const errorData = await response.text();
+                    console.error('Erro API:', errorData);
+                    alert('❌ Erro ao adicionar placa: ' + errorData);
                 }
             } catch (error) {
                 alert('Erro na conexão: ' + error.message);
