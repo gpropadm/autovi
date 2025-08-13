@@ -380,7 +380,9 @@
     </div>
     
     <script>
-        const API_BASE = 'http://localhost:3001/api';
+        const API_BASE = window.location.hostname === 'localhost' 
+            ? 'http://localhost:3001/api' 
+            : 'https://autovi.vercel.app/api';
         
         let isRunning = false;
         let captureInterval = null;
@@ -463,8 +465,9 @@
         // Testar conexão com servidor
         async function checkServer() {
             try {
-                const response = await fetch(`${API_BASE}/dashboard/stats`);
+                const response = await fetch(`${API_BASE}/health`);
                 if (response.ok) {
+                    console.log('✅ Servidor conectado');
                     serverStatus.className = 'status-dot active';
                     ocrStatus.className = 'status-dot active';
                 } else {
