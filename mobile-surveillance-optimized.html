@@ -119,6 +119,10 @@
             ▶️ INICIAR DETECÇÃO
         </button>
         
+        <button class="start-btn" id="testSoundBtn" onclick="playTestSound()" style="bottom: 140px; background: #ff6b6b;">
+            🔊 TESTAR SOM
+        </button>
+        
         <div class="alert-panel" id="alertPanel">
             <div class="alert-title">🚨 VEÍCULO PROCURADO!</div>
             <div class="alert-plate" id="alertPlate">REJ3H21</div>
@@ -360,7 +364,8 @@
                     showDetectionBox(detection, true);
                     showAlert(monitoredPlate);
                     
-                    // Vibração
+                    // Som de alerta + Vibração
+                    playAlertSound();
                     if ('vibrate' in navigator) {
                         navigator.vibrate([300, 100, 300, 100, 300]);
                     }
@@ -428,12 +433,52 @@
             
             isRunning = true;
             document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('testSoundBtn').style.display = 'none';
             document.getElementById('statusText').textContent = 'Detectando...';
             
             // Processar frames
             detectionInterval = setInterval(processFrame, config.captureInterval);
             
             console.log('🚀 Vigilância iniciada (modo otimizado)');
+        }
+        
+        // Som de alerta potente
+        function playAlertSound() {
+            try {
+                // Criar contexto de áudio
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Sequência de bips de alerta
+                const frequencies = [800, 1000, 800, 1200, 800]; // Hz
+                const duration = 0.15; // duração de cada bip
+                
+                frequencies.forEach((freq, index) => {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.frequency.setValueAtTime(freq, audioContext.currentTime + (index * duration));
+                    oscillator.type = 'square'; // Som mais forte
+                    
+                    gainNode.gain.setValueAtTime(0, audioContext.currentTime + (index * duration));
+                    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + (index * duration) + 0.01);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + (index * duration) + duration - 0.01);
+                    
+                    oscillator.start(audioContext.currentTime + (index * duration));
+                    oscillator.stop(audioContext.currentTime + (index * duration) + duration);
+                });
+                
+                console.log('🔊 Som de alerta tocado!');
+            } catch (error) {
+                console.log('❌ Som não disponível:', error);
+            }
+        }
+        
+        // Tocar som de teste
+        function playTestSound() {
+            playAlertSound();
         }
         
         // Inicializar aplicação
