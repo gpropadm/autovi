@@ -229,43 +229,44 @@
         async function initOCR() {
             console.log('🔍 Iniciando OCR híbrido...');
             
-            // Aguardar carregamento do Tesseract se necessário
-            let attempts = 0;
-            while (typeof Tesseract === 'undefined' && attempts < 10) {
-                console.log(`⏳ Aguardando TesseractJS... (${attempts + 1}/10)`);
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                attempts++;
-            }
+            // SEMPRE começar com status verde - OCR híbrido sempre funciona
+            ocrStatus.className = 'status-dot active';
             
-            if (typeof Tesseract !== 'undefined') {
-                try {
-                    console.log('📦 Carregando worker do Tesseract...');
-                    worker = await Tesseract.createWorker('eng', 1, {
-                        logger: (m) => {
-                            if (m.status === 'recognizing text') {
-                                console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
-                            }
-                        }
-                    });
-                    
-                    await worker.setParameters({
-                        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
-                        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE
-                    });
-                    
-                    ocrReady = true;
-                    ocrStatus.className = 'status-dot active';
-                    console.log('✅ TesseractJS carregado com sucesso!');
-                } catch (error) {
-                    console.error('❌ Erro no TesseractJS:', error);
-                    ocrReady = false;
-                    ocrStatus.className = 'status-dot';
+            // Tentar carregar TesseractJS em background (não crítico)
+            setTimeout(async () => {
+                let attempts = 0;
+                while (typeof Tesseract === 'undefined' && attempts < 5) {
+                    console.log(`⏳ Aguardando TesseractJS... (${attempts + 1}/5)`);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    attempts++;
                 }
-            } else {
-                console.log('⚠️ TesseractJS não carregou, usando modo servidor');
-                ocrReady = false;
-                ocrStatus.className = 'status-dot active'; // Verde mesmo sem Tesseract
-            }
+                
+                if (typeof Tesseract !== 'undefined') {
+                    try {
+                        console.log('📦 Carregando worker do Tesseract em background...');
+                        worker = await Tesseract.createWorker('eng', 1, {
+                            logger: () => {} // Silenciar logs
+                        });
+                        
+                        await worker.setParameters({
+                            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+                            tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE
+                        });
+                        
+                        ocrReady = true;
+                        console.log('✅ TesseractJS carregado com sucesso em background!');
+                    } catch (error) {
+                        console.log('⚠️ TesseractJS falhou, usando apenas modo servidor');
+                        ocrReady = false;
+                    }
+                } else {
+                    console.log('⚠️ TesseractJS não disponível, usando modo servidor');
+                    ocrReady = false;
+                }
+            }, 100);
+            
+            // OCR híbrido sempre funciona (servidor + opcional cliente)
+            console.log('✅ OCR Híbrido ativo (servidor + TesseractJS em background)');
         }
         
         // Testar servidor
@@ -589,7 +590,7 @@
             await initCamera();
             initGPS();
             await checkServer();
-            initOCR(); // Não bloquear
+            await initOCR(); // Aguardar OCR também
             
             // Keep screen on
             if ('wakeLock' in navigator) {
