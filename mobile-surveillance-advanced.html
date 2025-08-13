@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚗 AutoVi - Vigilância Avançada</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #000;
+            color: white;
+            overflow: hidden;
+        }
+        
+        .camera-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #videoElement {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .detection-box {
+            position: absolute;
+            border: 3px solid #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .detection-box.alert {
+            border-color: #ff0000;
+            background: rgba(255, 0, 0, 0.2);
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+        
+        .plate-text {
+            position: absolute;
+            bottom: -30px;
+            left: 0;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .status-bar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 15px;
+            z-index: 20;
+        }
+        
+        .status-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff4757;
+            transition: all 0.3s ease;
+        }
+        
+        .status-dot.active {
+            background: #2ed573;
+            box-shadow: 0 0 10px rgba(46, 213, 115, 0.5);
+        }
+        
+        .status-text {
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .alert-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            display: none;
+            min-width: 300px;
+        }
+        
+        .alert-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            animation: flash 0.5s infinite alternate;
+        }
+        
+        @keyframes flash {
+            0% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+        
+        .alert-plate {
+            font-size: 36px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+        
+        .alert-description {
+            font-size: 16px;
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+        
+        .close-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .detection-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 15px;
+            z-index: 20;
+        }
+        
+        .detection-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+        }
+        
+        .processing-indicator {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 10px;
+            z-index: 30;
+            display: none;
+        }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #333;
+            border-top: 2px solid #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="camera-container">
+        <video id="videoElement" autoplay muted playsinline></video>
+        <canvas id="captureCanvas" style="display: none;"></canvas>
+        <canvas id="processCanvas" style="display: none;"></canvas>
+        
+        <div class="overlay" id="detectionsOverlay"></div>
+        
+        <div class="status-bar">
+            <div class="status-group">
+                <div class="status-dot" id="cameraStatus"></div>
+                <span class="status-text">📷 Câmera</span>
+            </div>
+            <div class="status-group">
+                <div class="status-dot" id="gpsStatus"></div>
+                <span class="status-text">📍 GPS</span>
+            </div>
+            <div class="status-group">
+                <div class="status-dot" id="ocrStatus"></div>
+                <span class="status-text">🔍 OCR Avançado</span>
+            </div>
+            <div class="status-group">
+                <div class="status-dot" id="serverStatus"></div>
+                <span class="status-text">🌐 Servidor</span>
+            </div>
+        </div>
+        
+        <div class="processing-indicator" id="processingIndicator">
+            <div class="spinner"></div>
+        </div>
+        
+        <div class="alert-panel" id="alertPanel">
+            <div class="alert-title">🚨 VEÍCULO PROCURADO!</div>
+            <div class="alert-plate" id="alertPlate">ABC1234</div>
+            <div class="alert-description" id="alertDescription">
+                Veículo reportado como roubado
+            </div>
+            <button class="close-btn" onclick="closeAlert()">Fechar</button>
+        </div>
+        
+        <div class="detection-info">
+            <div class="detection-stats">
+                <span>🎯 Detecções: <span id="detectionCount">0</span></span>
+                <span>⚠️ Alertas: <span id="alertCount">0</span></span>
+                <span>🕐 Último: <span id="lastDetection">Aguardando...</span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- OpenCV.js -->
+    <script async src="https://docs.opencv.org/4.5.0/opencv.js"></script>
+    <!-- Tesseract.js -->
+    <script src="https://unpkg.com/tesseract.js@v4.1.1/dist/tesseract.min.js"></script>
+    
+    <script>
+        const API_BASE = window.location.hostname === 'localhost' 
+            ? 'http://localhost:3001/api' 
+            : 'https://autovi.vercel.app/api';
+        
+        let isRunning = false;
+        let detectionCount = 0;
+        let alertCount = 0;
+        let currentPosition = null;
+        let watchId = null;
+        let wakeLock = null;
+        let worker = null;
+        
+        // Elementos DOM
+        const video = document.getElementById('videoElement');
+        const canvas = document.getElementById('captureCanvas');
+        const processCanvas = document.getElementById('processCanvas');
+        const ctx = canvas.getContext('2d');
+        const processCtx = processCanvas.getContext('2d');
+        const overlay = document.getElementById('detectionsOverlay');
+        
+        // Status indicators
+        const cameraStatus = document.getElementById('cameraStatus');
+        const gpsStatus = document.getElementById('gpsStatus');
+        const ocrStatus = document.getElementById('ocrStatus');
+        const serverStatus = document.getElementById('serverStatus');
+        const processingIndicator = document.getElementById('processingIndicator');
+        
+        // Configurações de detecção
+        const config = {
+            captureInterval: 2000, // 2 segundos
+            plateRegex: /[A-Z]{3}[0-9][A-Z0-9][0-9]{2}/g, // Placas brasileiras
+            minConfidence: 0.6,
+            maxDetections: 5
+        };
+        
+        // Inicializar câmera
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                });
+                
+                video.srcObject = stream;
+                video.addEventListener('loadedmetadata', () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    processCanvas.width = video.videoWidth;
+                    processCanvas.height = video.videoHeight;
+                });
+                
+                cameraStatus.className = 'status-dot active';
+                console.log('✅ Câmera inicializada');
+            } catch (error) {
+                console.error('❌ Erro na câmera:', error);
+                cameraStatus.className = 'status-dot inactive';
+            }
+        }
+        
+        // Inicializar GPS
+        function initGPS() {
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        currentPosition = position;
+                        gpsStatus.className = 'status-dot active';
+                    },
+                    (error) => {
+                        console.error('❌ Erro GPS:', error);
+                        gpsStatus.className = 'status-dot inactive';
+                    },
+                    { enableHighAccuracy: true, maximumAge: 30000, timeout: 27000 }
+                );
+            }
+        }
+        
+        // Inicializar OCR
+        async function initOCR() {
+            try {
+                worker = await Tesseract.createWorker('por', 1, {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            console.log(`OCR: ${Math.round(m.progress * 100)}%`);
+                        }
+                    }
+                });
+                
+                await worker.setParameters({
+                    tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+                    tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK
+                });
+                
+                ocrStatus.className = 'status-dot active';
+                console.log('✅ OCR Tesseract inicializado');
+            } catch (error) {
+                console.error('❌ Erro no OCR:', error);
+                ocrStatus.className = 'status-dot inactive';
+            }
+        }
+        
+        // Testar servidor
+        async function checkServer() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                if (response.ok) {
+                    serverStatus.className = 'status-dot active';
+                    console.log('✅ Servidor conectado');
+                } else {
+                    throw new Error('Servidor não responde');
+                }
+            } catch (error) {
+                console.error('❌ Servidor offline:', error);
+                serverStatus.className = 'status-dot inactive';
+            }
+        }
+        
+        // Pré-processar imagem para melhor OCR
+        function preprocessImage(imageData) {
+            if (typeof cv === 'undefined') {
+                return imageData; // OpenCV não carregado, usar imagem original
+            }
+            
+            try {
+                // Converter para OpenCV Mat
+                let src = cv.imread(processCanvas);
+                let dst = new cv.Mat();
+                
+                // Converter para escala de cinza
+                cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+                
+                // Aplicar desfoque gaussiano para reduzir ruído
+                let blurred = new cv.Mat();
+                cv.GaussianBlur(dst, blurred, new cv.Size(5, 5), 0);
+                
+                // Aumentar contraste e brilho
+                let enhanced = new cv.Mat();
+                blurred.convertTo(enhanced, -1, 2.0, 50); // alpha=2.0 (contraste), beta=50 (brilho)
+                
+                // Aplicar filtro de nitidez
+                let kernel = cv.matFromArray(3, 3, cv.CV_32FC1, [
+                    0, -1, 0,
+                    -1, 5, -1,
+                    0, -1, 0
+                ]);
+                let sharpened = new cv.Mat();
+                cv.filter2D(enhanced, sharpened, cv.CV_8U, kernel);
+                
+                // Converter de volta para canvas
+                cv.imshow(processCanvas, sharpened);
+                
+                // Limpeza de memória
+                src.delete();
+                dst.delete();
+                blurred.delete();
+                enhanced.delete();
+                kernel.delete();
+                sharpened.delete();
+                
+                return processCanvas.toDataURL('image/jpeg', 0.9);
+            } catch (error) {
+                console.error('❌ Erro no pré-processamento:', error);
+                return imageData; // Retornar imagem original em caso de erro
+            }
+        }
+        
+        // Detectar regiões de placas usando OpenCV
+        function detectPlateRegions(imageData) {
+            if (typeof cv === 'undefined') {
+                return [{ x: 0, y: 0, width: canvas.width, height: canvas.height }]; // Imagem inteira
+            }
+            
+            try {
+                let src = cv.imread(processCanvas);
+                let gray = new cv.Mat();
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                
+                // Detectar bordas
+                let edges = new cv.Mat();
+                cv.Canny(gray, edges, 50, 150);
+                
+                // Encontrar contornos
+                let contours = new cv.MatVector();
+                let hierarchy = new cv.Mat();
+                cv.findContours(edges, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+                
+                let plateRegions = [];
+                
+                // Filtrar contornos que podem ser placas
+                for (let i = 0; i < contours.size(); i++) {
+                    let contour = contours.get(i);
+                    let rect = cv.boundingRect(contour);
+                    
+                    // Filtros para placas brasileiras (proporção aproximada 3:1)
+                    let aspectRatio = rect.width / rect.height;
+                    let area = rect.width * rect.height;
+                    
+                    if (aspectRatio > 2.0 && aspectRatio < 4.5 && 
+                        area > 2000 && area < 50000 &&
+                        rect.width > 80 && rect.height > 20) {
+                        
+                        plateRegions.push({
+                            x: Math.max(0, rect.x - 10),
+                            y: Math.max(0, rect.y - 10),
+                            width: Math.min(canvas.width - rect.x, rect.width + 20),
+                            height: Math.min(canvas.height - rect.y, rect.height + 20)
+                        });
+                    }
+                }
+                
+                // Limpeza
+                src.delete();
+                gray.delete();
+                edges.delete();
+                contours.delete();
+                hierarchy.delete();
+                
+                return plateRegions.length > 0 ? plateRegions : 
+                       [{ x: 0, y: 0, width: canvas.width, height: canvas.height }];
+                
+            } catch (error) {
+                console.error('❌ Erro na detecção de regiões:', error);
+                return [{ x: 0, y: 0, width: canvas.width, height: canvas.height }];
+            }
+        }
+        
+        // Capturar e processar frame
+        async function processFrame() {
+            if (!video.videoWidth || !video.videoHeight || !worker) return;
+            
+            try {
+                processingIndicator.style.display = 'block';
+                
+                // Capturar frame em alta resolução
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                processCtx.drawImage(video, 0, 0, processCanvas.width, processCanvas.height);
+                
+                let imageData = canvas.toDataURL('image/jpeg', 0.9);
+                
+                // Pré-processar imagem
+                imageData = preprocessImage(imageData);
+                
+                // Detectar regiões de placas
+                const plateRegions = detectPlateRegions(imageData);
+                
+                // Processar cada região
+                for (const region of plateRegions.slice(0, config.maxDetections)) {
+                    await processRegion(region, imageData);
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro no processamento:', error);
+            } finally {
+                processingIndicator.style.display = 'none';
+            }
+        }
+        
+        // Processar região específica
+        async function processRegion(region, fullImageData) {
+            try {
+                // Criar canvas temporário para a região
+                const regionCanvas = document.createElement('canvas');
+                const regionCtx = regionCanvas.getContext('2d');
+                regionCanvas.width = region.width;
+                regionCanvas.height = region.height;
+                
+                // Extrair região
+                regionCtx.drawImage(
+                    processCanvas,
+                    region.x, region.y, region.width, region.height,
+                    0, 0, region.width, region.height
+                );
+                
+                // OCR na região
+                const { data: { text, confidence } } = await worker.recognize(regionCanvas);
+                
+                // Limpar e validar texto
+                const cleanText = text.replace(/[^A-Z0-9]/g, '');
+                const matches = cleanText.match(config.plateRegex);
+                
+                if (matches && confidence > config.minConfidence * 100) {
+                    for (const plate of matches) {
+                        await handleDetection(plate, region, confidence);
+                    }
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro na região:', error);
+            }
+        }
+        
+        // Processar detecção
+        async function handleDetection(plate, region, confidence) {
+            detectionCount++;
+            document.getElementById('detectionCount').textContent = detectionCount;
+            document.getElementById('lastDetection').textContent = new Date().toLocaleTimeString();
+            
+            console.log(`🎯 Placa detectada: ${plate} (${confidence.toFixed(1)}%)`);
+            
+            // Mostrar caixa de detecção
+            showDetectionBox(region, plate, false);
+            
+            // Verificar se placa está monitorada
+            try {
+                const response = await fetch(`${API_BASE}/monitored-plates`);
+                const monitoredPlates = await response.json();
+                
+                const monitoredPlate = monitoredPlates.find(p => p.plate_number === plate);
+                
+                if (monitoredPlate) {
+                    alertCount++;
+                    document.getElementById('alertCount').textContent = alertCount;
+                    
+                    // Mostrar alerta
+                    showDetectionBox(region, plate, true);
+                    showAlert(monitoredPlate);
+                    
+                    // Vibração e som
+                    if ('vibrate' in navigator) {
+                        navigator.vibrate([300, 100, 300, 100, 300]);
+                    }
+                    
+                    console.log(`🚨 ALERTA! Placa ${plate} é ${monitoredPlate.status.toUpperCase()}`);
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro ao verificar placa:', error);
+            }
+        }
+        
+        // Mostrar caixa de detecção
+        function showDetectionBox(region, plate, isAlert) {
+            const box = document.createElement('div');
+            box.className = `detection-box ${isAlert ? 'alert' : ''}`;
+            box.style.left = `${(region.x / canvas.width) * 100}%`;
+            box.style.top = `${(region.y / canvas.height) * 100}%`;
+            box.style.width = `${(region.width / canvas.width) * 100}%`;
+            box.style.height = `${(region.height / canvas.height) * 100}%`;
+            
+            const plateText = document.createElement('div');
+            plateText.className = 'plate-text';
+            plateText.textContent = plate;
+            box.appendChild(plateText);
+            
+            overlay.appendChild(box);
+            
+            // Remover após 3 segundos
+            setTimeout(() => {
+                if (box.parentNode) {
+                    box.parentNode.removeChild(box);
+                }
+            }, 3000);
+        }
+        
+        // Mostrar alerta
+        function showAlert(monitoredPlate) {
+            const alertPanel = document.getElementById('alertPanel');
+            const alertPlate = document.getElementById('alertPlate');
+            const alertDescription = document.getElementById('alertDescription');
+            
+            alertPlate.textContent = monitoredPlate.plate_number;
+            alertDescription.textContent = `${monitoredPlate.status.toUpperCase()}: ${monitoredPlate.description}`;
+            
+            alertPanel.style.display = 'block';
+            
+            // Fechar automaticamente após 10 segundos
+            setTimeout(closeAlert, 10000);
+        }
+        
+        // Fechar alerta
+        function closeAlert() {
+            document.getElementById('alertPanel').style.display = 'none';
+        }
+        
+        // Inicializar aplicação
+        window.addEventListener('load', async () => {
+            console.log('🚗 Iniciando AutoVi Avançado...');
+            
+            await initCamera();
+            initGPS();
+            await checkServer();
+            
+            // Aguardar OpenCV carregar
+            if (typeof cv !== 'undefined') {
+                console.log('✅ OpenCV carregado');
+            } else {
+                // Aguardar OpenCV
+                const checkOpenCV = setInterval(() => {
+                    if (typeof cv !== 'undefined') {
+                        console.log('✅ OpenCV carregado');
+                        clearInterval(checkOpenCV);
+                    }
+                }, 1000);
+            }
+            
+            await initOCR();
+            
+            // Keep screen on
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('🔓 Screen wake lock ativo');
+                } catch (err) {
+                    console.log('❌ Wake lock falhou');
+                }
+            }
+            
+            // Iniciar processamento automático
+            setTimeout(() => {
+                console.log('🚀 Iniciando vigilância automática...');
+                isRunning = true;
+                setInterval(processFrame, config.captureInterval);
+            }, 5000);
+        });
+        
+        // Limpeza ao sair
+        window.addEventListener('beforeunload', () => {
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+            if (wakeLock) wakeLock.release();
+            if (worker) worker.terminate();
+        });
+    </script>
+</body>
+</html>
