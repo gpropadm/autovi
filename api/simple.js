@@ -23,6 +23,45 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Endpoint para testar cadastro direto
+app.get('/api/test-insert', async (req, res) => {
+  try {
+    const testPlate = {
+      plate_number: 'REJ3H21',
+      status: 'stolen',
+      description: 'CARRO ESTA PARADO NO PATIO',
+      owner_name: null,
+      vehicle_model: 'HONDA CIVIC',
+      vehicle_color: 'BRANCA'
+    };
+    
+    const result = await pool.query(`
+      INSERT INTO monitored_plates (plate_number, status, description, owner_name, vehicle_model, vehicle_color)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `, [
+      testPlate.plate_number,
+      testPlate.status,
+      testPlate.description,
+      testPlate.owner_name,
+      testPlate.vehicle_model,
+      testPlate.vehicle_color
+    ]);
+    
+    res.json({
+      success: true,
+      message: 'Placa REJ3H21 cadastrada com sucesso!',
+      plate: result.rows[0]
+    });
+  } catch (error) {
+    res.json({
+      success: false,
+      error: error.message,
+      detail: error.detail
+    });
+  }
+});
+
 // Endpoint para listar placas - SEMPRE PostgreSQL
 app.get('/api/monitored-plates', async (req, res) => {
   try {
@@ -46,7 +85,12 @@ app.get('/api/monitored-plates', async (req, res) => {
 app.post('/api/monitored-plates', async (req, res) => {
   try {
     const plateData = req.body;
-    console.log('📥 Dados recebidos:', plateData);
+    console.log('📥 Dados recebidos:', JSON.stringify(plateData));
+    
+    // Validar dados obrigatórios
+    if (!plateData.plate_number) {
+      return res.status(400).json({ error: 'plate_number é obrigatório' });
+    }
     
     const result = await pool.query(`
       INSERT INTO monitored_plates (plate_number, status, description, owner_name, vehicle_model, vehicle_color)
@@ -55,19 +99,21 @@ app.post('/api/monitored-plates', async (req, res) => {
     `, [
       plateData.plate_number,
       plateData.status || 'suspicious',
-      plateData.description,
-      plateData.owner_name,
-      plateData.vehicle_model,
-      plateData.vehicle_color
+      plateData.description || '',
+      plateData.owner_name || null,
+      plateData.vehicle_model || null,
+      plateData.vehicle_color || null
     ]);
     
     console.log('✅ PLACA SALVA NO POSTGRESQL:', result.rows[0]);
     res.json(result.rows[0]);
   } catch (error) {
-    console.error('❌ ERRO AO SALVAR PLACA:', error);
+    console.error('❌ ERRO DETALHADO:', error.message);
+    console.error('❌ STACK:', error.stack);
     res.status(500).json({ 
       error: 'Erro ao salvar no PostgreSQL',
-      message: error.message 
+      message: error.message,
+      detail: error.detail || 'Sem detalhes'
     });
   }
 });
