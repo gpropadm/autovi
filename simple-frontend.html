@@ -527,15 +527,15 @@
         
         async function addPlate() {
             const plateData = {
-                plateNumber: document.getElementById('new-plate').value,
+                plate_number: document.getElementById('new-plate').value,
                 status: document.getElementById('new-status').value,
                 description: document.getElementById('new-description').value,
-                ownerName: document.getElementById('new-owner').value,
-                vehicleModel: document.getElementById('new-model').value,
-                vehicleColor: document.getElementById('new-color').value
+                owner_name: document.getElementById('new-owner').value,
+                vehicle_model: document.getElementById('new-model').value,
+                vehicle_color: document.getElementById('new-color').value
             };
             
-            if (!plateData.plateNumber || !plateData.description) {
+            if (!plateData.plate_number || !plateData.description) {
                 alert('Placa e descrição são obrigatórias!');
                 return;
             }
