@@ -18,6 +18,10 @@
     {
       "source": "/api/(.*)",
       "destination": "/api/simple.js"
+    },
+    {
+      "source": "/simple.js",
+      "destination": "/api/simple.js"
     }
   ]
 }
