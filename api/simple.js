@@ -118,6 +118,47 @@ app.post('/api/monitored-plates', async (req, res) => {
   }
 });
 
+// Endpoint para reconhecimento de placas (mobile app)
+app.post('/api/recognize', async (req, res) => {
+  try {
+    console.log('📷 Imagem recebida para OCR');
+    
+    // Por enquanto, simular OCR - detectar REJ3H21
+    const detectedPlates = ['REJ3H21', 'ABC1234', 'XYZ9876'];
+    const randomPlate = detectedPlates[Math.floor(Math.random() * detectedPlates.length)];
+    
+    // Verificar se placa está monitorada
+    const monitoredPlate = await pool.query(`
+      SELECT * FROM monitored_plates 
+      WHERE plate_number = $1 AND is_active = true 
+      LIMIT 1
+    `, [randomPlate]);
+    
+    if (monitoredPlate.rows.length > 0) {
+      // PLACA ENCONTRADA!
+      res.json({
+        success: true,
+        plate: randomPlate,
+        confidence: 0.95,
+        alert: true,
+        monitoredPlate: monitoredPlate.rows[0],
+        message: `🚨 VEÍCULO ${monitoredPlate.rows[0].status.toUpperCase()} DETECTADO!`
+      });
+    } else {
+      // Placa normal
+      res.json({
+        success: true,
+        plate: randomPlate,
+        confidence: 0.85,
+        alert: false
+      });
+    }
+  } catch (error) {
+    console.error('❌ Erro no OCR:', error);
+    res.status(500).json({ error: 'Erro no reconhecimento' });
+  }
+});
+
 // Endpoint para testar reconhecimento
 app.get('/api/test-recognition', async (req, res) => {
   try {
