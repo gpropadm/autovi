@@ -118,5 +118,42 @@ app.post('/api/monitored-plates', async (req, res) => {
   }
 });
 
+// Endpoint para testar reconhecimento
+app.get('/api/test-recognition', async (req, res) => {
+  try {
+    // Simular detecção da placa REJ3H21
+    const plateNumber = 'REJ3H21';
+    
+    // Verificar se placa está monitorada
+    const monitoredPlate = await pool.query(`
+      SELECT * FROM monitored_plates 
+      WHERE plate_number = $1 AND is_active = true 
+      LIMIT 1
+    `, [plateNumber]);
+    
+    if (monitoredPlate.rows.length > 0) {
+      res.json({
+        success: true,
+        alert: true,
+        plate_detected: plateNumber,
+        monitored_plate: monitoredPlate.rows[0],
+        message: '🚨 ALERTA! Placa REJ3H21 detectada como STOLEN!'
+      });
+    } else {
+      res.json({
+        success: true,
+        alert: false,
+        plate_detected: plateNumber,
+        message: 'Placa não monitorada'
+      });
+    }
+  } catch (error) {
+    res.json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Para Vercel
 module.exports = app;
