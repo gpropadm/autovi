@@ -9,7 +9,7 @@ require('dotenv').config();
 
 const plateRecognition = require('../backend/services/plateRecognition');
 // Usar PostgreSQL em produção, SQLite em desenvolvimento
-const database = process.env.POSTGRES_URL 
+const database = (process.env.DATABASE_URL || process.env.POSTGRES_URL)
   ? require('../backend/services/database-postgres')
   : require('../backend/services/database');
 const alertSystem = require('../backend/services/alertSystem');
