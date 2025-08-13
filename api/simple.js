@@ -11,7 +11,11 @@ const pool = new Pool({
 });
 
 // Middleware básico
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:3000', 'https://autovi.vercel.app', 'http://localhost:8080'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 // Endpoint de teste simples
