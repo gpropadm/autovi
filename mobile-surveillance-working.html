@@ -96,6 +96,10 @@
             ▶️ INICIAR DETECÇÃO
         </button>
         
+        <button class="start-btn" id="cameraBtn" onclick="testCamera()" style="bottom: 140px; background: #3742fa;">
+            📷 TESTAR CÂMERA
+        </button>
+        
         <div class="alert-panel" id="alertPanel">
             <div class="alert-title">🚨 VEÍCULO PROCURADO!</div>
             <div class="alert-plate" id="alertPlate">REJ3H21</div>
@@ -140,28 +144,53 @@
         // Placas para detectar
         const targetPlates = ['REJ3H21', 'ABC1234', 'XYZ9876'];
         
-        // Inicializar câmera
+        // Inicializar câmera com várias tentativas
         async function initCamera() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { 
-                        facingMode: 'environment',
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
-                    }
-                });
+                // Tentar câmera traseira primeiro
+                let stream;
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: { 
+                            facingMode: { exact: 'environment' },
+                            width: { ideal: 1280, min: 640 },
+                            height: { ideal: 720, min: 480 }
+                        }
+                    });
+                } catch (e) {
+                    console.log('Câmera traseira falhou, tentando qualquer câmera...');
+                    // Se falhar, tentar qualquer câmera
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: { 
+                            width: { ideal: 1280, min: 640 },
+                            height: { ideal: 720, min: 480 }
+                        }
+                    });
+                }
                 
                 video.srcObject = stream;
-                video.addEventListener('loadedmetadata', () => {
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
+                
+                // Aguardar vídeo carregar
+                await new Promise((resolve) => {
+                    video.addEventListener('loadedmetadata', () => {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        resolve();
+                    });
                 });
                 
+                // Forçar play
+                await video.play();
+                
                 cameraStatus.className = 'status-dot active';
-                console.log('✅ Câmera inicializada');
+                console.log('✅ Câmera inicializada:', video.videoWidth, 'x', video.videoHeight);
+                
             } catch (error) {
                 console.error('❌ Erro na câmera:', error);
                 cameraStatus.className = 'status-dot inactive';
+                
+                // Mostrar erro para o usuário
+                alert('Erro na câmera! Verifique:\n1. Permissões da câmera\n2. Se outro app está usando\n3. Recarregue a página');
             }
         }
         
@@ -283,12 +312,55 @@
             document.getElementById('alertPanel').style.display = 'none';
         }
         
+        // Testar câmera manualmente
+        async function testCamera() {
+            console.log('🔧 Testando câmera...');
+            
+            // Parar stream anterior se existir
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+            
+            try {
+                // Listar câmeras disponíveis
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const cameras = devices.filter(device => device.kind === 'videoinput');
+                console.log('📱 Câmeras disponíveis:', cameras.length);
+                
+                // Tentar cada câmera
+                for (let i = 0; i < cameras.length; i++) {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({
+                            video: { deviceId: cameras[i].deviceId }
+                        });
+                        
+                        video.srcObject = stream;
+                        await video.play();
+                        
+                        console.log(`✅ Câmera ${i} funcionando!`);
+                        cameraStatus.className = 'status-dot active';
+                        return;
+                        
+                    } catch (e) {
+                        console.log(`❌ Câmera ${i} falhou:`, e);
+                    }
+                }
+                
+                throw new Error('Nenhuma câmera funcionou');
+                
+            } catch (error) {
+                console.error('❌ Teste de câmera falhou:', error);
+                alert('Câmera não funcionou! Tente:\n1. Recarregar página\n2. Dar permissão\n3. Fechar outros apps');
+            }
+        }
+        
         // Iniciar detecção
         function startDetection() {
             if (isRunning) return;
             
             isRunning = true;
             document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('cameraBtn').style.display = 'none';
             document.getElementById('statusText').textContent = 'Detectando...';
             
             // Processar frames a cada 3 segundos (como estava funcionando)
