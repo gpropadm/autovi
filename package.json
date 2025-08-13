@@ -6,9 +6,9 @@
   "scripts": {
     "start": "node backend/server.js",
     "dev": "nodemon backend/server.js",
-    "build": "cd frontend && npm run build",
+    "build": "mkdir -p public && cp *.html public/",
     "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install",
-    "vercel-build": "cd backend && npm install"
+    "vercel-build": "mkdir -p public && cp *.html public/ && cd api && npm install"
   },
   "keywords": [
     "plate-recognition",
