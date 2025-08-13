@@ -5,9 +5,16 @@
   "functions": {
     "api/simple.js": {
       "maxDuration": 30
+    },
+    "api/test-connection.js": {
+      "maxDuration": 30
     }
   },
   "rewrites": [
+    {
+      "source": "/api/test-connection",
+      "destination": "/api/test-connection.js"
+    },
     {
       "source": "/api/(.*)",
       "destination": "/api/simple.js"
