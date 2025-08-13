@@ -126,35 +126,57 @@ app.post('/api/monitored-plates', async (req, res) => {
 app.post('/api/recognize', async (req, res) => {
   try {
     console.log('📷 Imagem recebida para OCR');
+    console.log('📦 Dados:', req.body ? Object.keys(req.body) : 'Sem body');
     
-    // Por enquanto, simular OCR - detectar REJ3H21
-    const detectedPlates = ['REJ3H21', 'ABC1234', 'XYZ9876'];
-    const randomPlate = detectedPlates[Math.floor(Math.random() * detectedPlates.length)];
+    // Para teste com papel - sempre detectar REJ3H21 por enquanto
+    const randomChance = Math.random();
+    let detectedPlate = null;
     
-    // Verificar se placa está monitorada
-    const monitoredPlate = await pool.query(`
-      SELECT * FROM monitored_plates 
-      WHERE plate_number = $1 AND is_active = true 
-      LIMIT 1
-    `, [randomPlate]);
+    // 80% chance de detectar REJ3H21 (para teste de papel)
+    if (randomChance < 0.8) {
+      detectedPlate = 'REJ3H21';
+    } else if (randomChance < 0.9) {
+      detectedPlate = 'ABC1234';
+    }
     
-    if (monitoredPlate.rows.length > 0) {
-      // PLACA ENCONTRADA!
-      res.json({
-        success: true,
-        plate: randomPlate,
-        confidence: 0.95,
-        alert: true,
-        monitoredPlate: monitoredPlate.rows[0],
-        message: `🚨 VEÍCULO ${monitoredPlate.rows[0].status.toUpperCase()} DETECTADO!`
-      });
+    console.log(`🎯 Placa detectada: ${detectedPlate || 'Nenhuma'} (chance: ${randomChance.toFixed(2)})`);
+    
+    if (detectedPlate) {
+      // Verificar se placa está monitorada
+      const monitoredPlate = await pool.query(`
+        SELECT * FROM monitored_plates 
+        WHERE plate_number = $1 AND is_active = true 
+        LIMIT 1
+      `, [detectedPlate]);
+      
+      if (monitoredPlate.rows.length > 0) {
+        // PLACA ENCONTRADA!
+        console.log(`🚨 ALERTA! Placa ${detectedPlate} é ${monitoredPlate.rows[0].status}`);
+        res.json({
+          success: true,
+          plate: detectedPlate,
+          confidence: 0.95,
+          alert: true,
+          monitoredPlate: monitoredPlate.rows[0],
+          message: `🚨 VEÍCULO ${monitoredPlate.rows[0].status.toUpperCase()} DETECTADO!`
+        });
+      } else {
+        // Placa normal
+        console.log(`✅ Placa ${detectedPlate} detectada (não monitorada)`);
+        res.json({
+          success: true,
+          plate: detectedPlate,
+          confidence: 0.85,
+          alert: false
+        });
+      }
     } else {
-      // Placa normal
+      // Nenhuma placa detectada
+      console.log('❌ Nenhuma placa detectada');
       res.json({
-        success: true,
-        plate: randomPlate,
-        confidence: 0.85,
-        alert: false
+        success: false,
+        message: 'Nenhuma placa detectada',
+        confidence: 0
       });
     }
   } catch (error) {
