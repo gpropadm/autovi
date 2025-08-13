@@ -8,9 +8,9 @@ const socketIo = require('socket.io');
 require('dotenv').config();
 
 const plateRecognition = require('../backend/services/plateRecognition');
-// Usar PostgreSQL simplificado em produção
+// Database service
 const database = process.env.DATABASE_URL
-  ? require('./database-simple')
+  ? require('./db')
   : require('../backend/services/database');
 const alertSystem = require('../backend/services/alertSystem');
 
@@ -227,25 +227,30 @@ app.get('/api/cameras', async (req, res) => {
   }
 });
 
-// Endpoint de teste para verificar conexão do banco
+// Endpoint de teste básico
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    database: process.env.DATABASE_URL ? 'PostgreSQL' : 'SQLite',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Endpoint de teste do banco
 app.get('/api/test-db', async (req, res) => {
   try {
-    console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'Configurada' : 'NÃO configurada');
-    console.log('POSTGRES_URL:', process.env.POSTGRES_URL ? 'Configurada' : 'NÃO configurada');
-    
     const plates = await database.getMonitoredPlates();
     res.json({
       success: true,
-      database: (process.env.DATABASE_URL || process.env.POSTGRES_URL) ? 'PostgreSQL' : 'SQLite',
+      database: process.env.DATABASE_URL ? 'PostgreSQL' : 'SQLite',
       plates_count: plates.length,
-      plates: plates
+      plates: plates.slice(0, 3) // Apenas primeiras 3 para teste
     });
   } catch (error) {
     console.error('Erro no teste do banco:', error);
     res.status(500).json({ 
-      error: 'Erro interno do servidor',
-      database: (process.env.DATABASE_URL || process.env.POSTGRES_URL) ? 'PostgreSQL' : 'SQLite',
-      message: error.message 
+      error: error.message,
+      database: process.env.DATABASE_URL ? 'PostgreSQL' : 'SQLite'
     });
   }
 });
