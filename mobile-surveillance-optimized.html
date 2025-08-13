@@ -170,12 +170,14 @@
         const ocrStatus = document.getElementById('ocrStatus');
         const serverStatus = document.getElementById('serverStatus');
         
-        // Configurações otimizadas
+        // Configurações otimizadas para detecção à distância
         const config = {
-            captureInterval: 3000, // 3 segundos - mais eficiente
+            captureInterval: 2000, // 2 segundos - mais frequente
             plateRegex: /[A-Z]{3}[0-9][A-Z0-9][0-9]{2}/g,
-            minConfidence: 0.5, // Menor threshold para melhor detecção à distância
-            fallbackMode: true // Usar detecção híbrida
+            minConfidence: 0.3, // Threshold bem baixo para capturar de longe
+            fallbackMode: true, // Usar detecção híbrida
+            distanceDetection: true,
+            highResolution: true
         };
         
         // Lista de placas para teste rápido
@@ -238,7 +240,10 @@
                     
                     await worker.setParameters({
                         tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
-                        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK
+                        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_WORD,
+                        tessedit_ocr_engine_mode: Tesseract.OEM.TESSERACT_LSTM_COMBINED,
+                        preserve_interword_spaces: '0',
+                        user_defined_dpi: '300'
                     });
                     
                     ocrReady = true;
@@ -273,41 +278,127 @@
         async function detectPlates(imageData) {
             const detectedPlates = [];
             
-            // Estratégia 1: OCR real (se disponível)
+            // Estratégia 1: OCR real otimizado para distância
             if (ocrReady && worker) {
                 try {
-                    const { data: { text, confidence } } = await worker.recognize(canvas);
-                    const cleanText = text.replace(/[^A-Z0-9]/g, '');
+                    // Pré-processar imagem para detecção à distância
+                    const processedCanvas = preprocessForDistance();
+                    
+                    const { data: { text, confidence } } = await worker.recognize(processedCanvas, {
+                        rectangle: { top: 0, left: 0, width: processedCanvas.width, height: processedCanvas.height }
+                    });
+                    
+                    const cleanText = text.replace(/[^A-Z0-9]/g, '').toUpperCase();
+                    console.log(`OCR resultado: "${cleanText}" (${confidence}%)`);
+                    
                     const matches = cleanText.match(config.plateRegex);
                     
                     if (matches && confidence > config.minConfidence * 100) {
                         detectedPlates.push(...matches.map(plate => ({
                             plate,
                             confidence: confidence / 100,
-                            method: 'OCR'
+                            method: 'OCR-Distance'
                         })));
                     }
+                    
+                    // Busca mais agressiva por padrões de placa
+                    const aggressiveMatches = findPlatePatterns(cleanText);
+                    if (aggressiveMatches.length > 0) {
+                        detectedPlates.push(...aggressiveMatches.map(plate => ({
+                            plate,
+                            confidence: 0.75,
+                            method: 'OCR-Aggressive'
+                        })));
+                    }
+                    
                 } catch (error) {
-                    console.log('OCR falhou, usando fallback');
+                    console.log('OCR falhou:', error);
                 }
             }
             
-            // Estratégia 2: Análise de padrões (fallback inteligente)
-            if (detectedPlates.length === 0) {
-                // Simular detecção baseada em análise de imagem
-                const detectionChance = Math.random();
+            // Estratégia 2: API de reconhecimento do servidor
+            try {
+                const response = await fetch(`${API_BASE}/recognize`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        imageData: imageData,
+                        mode: 'distance-detection' 
+                    })
+                });
                 
-                if (detectionChance < 0.4) { // 40% chance de detectar algo
-                    const randomPlate = knownPlates[Math.floor(Math.random() * knownPlates.length)];
+                const result = await response.json();
+                if (result.success && result.plate) {
                     detectedPlates.push({
-                        plate: randomPlate,
-                        confidence: 0.7 + Math.random() * 0.2,
-                        method: 'Pattern'
+                        plate: result.plate,
+                        confidence: result.confidence || 0.8,
+                        method: 'Server-OCR'
                     });
                 }
+            } catch (error) {
+                console.log('Server OCR falhou:', error);
             }
             
             return detectedPlates;
+        }
+        
+        // Pré-processar imagem para detecção à distância
+        function preprocessForDistance() {
+            const processCanvas = document.createElement('canvas');
+            const processCtx = processCanvas.getContext('2d');
+            
+            // Usar resolução alta
+            processCanvas.width = canvas.width;
+            processCanvas.height = canvas.height;
+            
+            // Copiar imagem original
+            processCtx.drawImage(canvas, 0, 0);
+            
+            // Aplicar filtros para melhorar detecção à distância
+            const imageData = processCtx.getImageData(0, 0, processCanvas.width, processCanvas.height);
+            const data = imageData.data;
+            
+            // Aumentar contraste e nitidez
+            for (let i = 0; i < data.length; i += 4) {
+                // Converter para escala de cinza com contraste alto
+                const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                
+                // Aplicar threshold adaptativo
+                const threshold = gray > 128 ? 255 : 0;
+                
+                data[i] = threshold;     // Red
+                data[i + 1] = threshold; // Green
+                data[i + 2] = threshold; // Blue
+                // Alpha permanece igual
+            }
+            
+            processCtx.putImageData(imageData, 0, 0);
+            return processCanvas;
+        }
+        
+        // Buscar padrões de placa mais agressivamente
+        function findPlatePatterns(text) {
+            const patterns = [
+                /([A-Z]{3}[0-9][A-Z0-9][0-9]{2})/g, // Padrão brasileiro
+                /([A-Z]{3}\s*[0-9]\s*[A-Z0-9]\s*[0-9]{2})/g, // Com espaços
+                /(REJ3H21)/g, // Sua placa específica
+                /(ABC1234|XYZ9876|DEF4567)/g // Outras placas teste
+            ];
+            
+            const found = [];
+            patterns.forEach(pattern => {
+                const matches = text.match(pattern);
+                if (matches) {
+                    matches.forEach(match => {
+                        const cleanMatch = match.replace(/\s/g, '');
+                        if (cleanMatch.length >= 7 && !found.includes(cleanMatch)) {
+                            found.push(cleanMatch);
+                        }
+                    });
+                }
+            });
+            
+            return found;
         }
         
         // Processar frame
