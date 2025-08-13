@@ -227,6 +227,29 @@ app.get('/api/cameras', async (req, res) => {
   }
 });
 
+// Endpoint de teste para verificar conexão do banco
+app.get('/api/test-db', async (req, res) => {
+  try {
+    console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'Configurada' : 'NÃO configurada');
+    console.log('POSTGRES_URL:', process.env.POSTGRES_URL ? 'Configurada' : 'NÃO configurada');
+    
+    const plates = await database.getMonitoredPlates();
+    res.json({
+      success: true,
+      database: (process.env.DATABASE_URL || process.env.POSTGRES_URL) ? 'PostgreSQL' : 'SQLite',
+      plates_count: plates.length,
+      plates: plates
+    });
+  } catch (error) {
+    console.error('Erro no teste do banco:', error);
+    res.status(500).json({ 
+      error: 'Erro interno do servidor',
+      database: (process.env.DATABASE_URL || process.env.POSTGRES_URL) ? 'PostgreSQL' : 'SQLite',
+      message: error.message 
+    });
+  }
+});
+
 // Para desenvolvimento local
 if (process.env.NODE_ENV !== 'production') {
   server.listen(PORT, () => {
