@@ -2,10 +2,13 @@
   "name": "license-plate-recognition-backend",
   "version": "1.0.0",
   "description": "Sistema de reconhecimento de placas - Backend API",
-  "main": "server.js",
+  "main": "index.js",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "node index.js",
+    "dev": "nodemon index.js",
     "test": "jest"
   },
   "dependencies": {
