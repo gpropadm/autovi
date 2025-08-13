@@ -1,6 +1,8 @@
 {
   "version": 2,
   "name": "autovi-system",
+  "buildCommand": "echo 'No build needed'",
+  "outputDirectory": "public",
   "functions": {
     "api/index.js": {
       "maxDuration": 30
@@ -14,6 +16,5 @@
   ],
   "env": {
     "NODE_ENV": "production"
-  },
-  "outputDirectory": "public"
+  }
 }
