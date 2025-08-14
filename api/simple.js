@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
+const Tesseract = require('tesseract.js');
 
 const app = express();
 
@@ -125,21 +126,70 @@ app.post('/api/monitored-plates', async (req, res) => {
 // Endpoint para reconhecimento de placas (mobile app)
 app.post('/api/recognize', async (req, res) => {
   try {
-    console.log('📷 Imagem recebida para OCR');
-    console.log('📦 Dados:', req.body ? Object.keys(req.body) : 'Sem body');
+    console.log('📷 Imagem recebida para OCR real');
     
-    // Para teste com papel - sempre detectar REJ3H21 por enquanto
-    const randomChance = Math.random();
-    let detectedPlate = null;
+    const { imageData } = req.body;
     
-    // 80% chance de detectar REJ3H21 (para teste de papel)
-    if (randomChance < 0.8) {
-      detectedPlate = 'REJ3H21';
-    } else if (randomChance < 0.9) {
-      detectedPlate = 'ABC1234';
+    if (!imageData) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'ImageData é obrigatório' 
+      });
     }
     
-    console.log(`🎯 Placa detectada: ${detectedPlate || 'Nenhuma'} (chance: ${randomChance.toFixed(2)})`);
+    // OCR Real usando TesseractJS no servidor
+    let detectedPlate = null;
+    
+    try {
+      if (imageData.startsWith('data:image/')) {
+        console.log('📸 Processando imagem com TesseractJS...');
+        
+        // Usar TesseractJS real para OCR
+        const { data: { text, confidence } } = await Tesseract.recognize(imageData, 'eng', {
+          logger: (m) => {
+            if (m.status === 'recognizing text') {
+              console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
+            }
+          }
+        });
+        
+        console.log(`📖 Texto detectado: "${text}" (${confidence.toFixed(1)}%)`);
+        
+        // Limpar e buscar padrões de placa
+        const cleanText = text.replace(/[^A-Z0-9]/g, '').toUpperCase();
+        console.log(`🧹 Texto limpo: "${cleanText}"`);
+        
+        // Padrões de placas brasileiras
+        const platePatterns = [
+          /[A-Z]{3}[0-9]{4}/g,     // ABC1234
+          /[A-Z]{3}[0-9][A-Z][0-9]{2}/g, // ABC1D23
+          /[A-Z]{2}[0-9]{4}/g      // AB1234
+        ];
+        
+        for (const pattern of platePatterns) {
+          const matches = cleanText.match(pattern);
+          if (matches && matches.length > 0) {
+            detectedPlate = matches[0];
+            console.log(`✅ Placa encontrada: ${detectedPlate} (padrão: ${pattern})`);
+            break;
+          }
+        }
+        
+        if (!detectedPlate && confidence > 50) {
+          // Se confiança alta mas não achou padrão, tentar texto limpo
+          if (cleanText.length >= 6 && cleanText.length <= 8) {
+            detectedPlate = cleanText;
+            console.log(`⚠️ Usando texto completo como placa: ${detectedPlate}`);
+          }
+        }
+        
+      } else {
+        console.log('❌ Formato de imagem inválido');
+      }
+      
+    } catch (ocrError) {
+      console.error('❌ Erro no OCR TesseractJS:', ocrError);
+    }
     
     if (detectedPlate) {
       // Verificar se placa está monitorada

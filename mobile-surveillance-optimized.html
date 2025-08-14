@@ -289,10 +289,40 @@
         async function detectPlates(imageData) {
             const detectedPlates = [];
             
-            // Estratégia 1: TesseractJS local (se disponível)
-            if (ocrReady && worker) {
+            // ESTRATÉGIA PRINCIPAL: API do servidor com OCR real
+            try {
+                console.log('🌐 Enviando imagem para OCR do servidor...');
+                console.log(`📏 Tamanho da imagem: ${imageData.length} bytes`);
+                
+                const response = await fetch(`${API_BASE}/recognize`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        imageData: imageData 
+                    })
+                });
+                
+                const result = await response.json();
+                console.log('📡 Servidor OCR respondeu:', result);
+                
+                if (result.success && result.plate) {
+                    detectedPlates.push({
+                        plate: result.plate,
+                        confidence: result.confidence || 0.85,
+                        method: 'Servidor-OCR'
+                    });
+                    console.log(`✅ Servidor detectou: ${result.plate}`);
+                } else {
+                    console.log('❌ Servidor não detectou placa');
+                }
+            } catch (error) {
+                console.error('❌ Erro no servidor OCR:', error);
+            }
+            
+            // ESTRATÉGIA SECUNDÁRIA: TesseractJS local (fallback)
+            if (detectedPlates.length === 0 && ocrReady && worker) {
                 try {
-                    console.log('🔍 Usando TesseractJS local...');
+                    console.log('🔍 Fallback: Usando TesseractJS local...');
                     
                     // Usar a imagem diretamente do canvas
                     const { data: { text, confidence } } = await worker.recognize(canvas);
@@ -306,39 +336,13 @@
                         detectedPlates.push(...plateMatches.map(plate => ({
                             plate,
                             confidence: confidence / 100,
-                            method: 'TesseractJS'
+                            method: 'TesseractJS-Local'
                         })));
                     }
                     
                 } catch (error) {
-                    console.log('❌ TesseractJS falhou:', error);
+                    console.log('❌ TesseractJS local falhou:', error);
                 }
-            }
-            
-            // Estratégia 2: API do servidor (sempre tentar)
-            try {
-                console.log('🌐 Usando OCR do servidor...');
-                
-                const response = await fetch(`${API_BASE}/recognize`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        imageData: imageData 
-                    })
-                });
-                
-                const result = await response.json();
-                console.log('📡 Servidor respondeu:', result);
-                
-                if (result.success && result.plate) {
-                    detectedPlates.push({
-                        plate: result.plate,
-                        confidence: result.confidence || 0.85,
-                        method: 'Servidor'
-                    });
-                }
-            } catch (error) {
-                console.error('❌ Servidor OCR falhou:', error);
             }
             
             // Remover duplicatas
